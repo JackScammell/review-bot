@@ -1,0 +1,137 @@
+# Reusable PR review workflow. Repos call it with a small caller file
+# (see examples/caller.yml). One shared monthly budget across every repo.
+name: review-bot
+
+on:
+  workflow_call:
+    inputs:
+      bot_ref:
+        description: "Ref of JackScammell/review-bot to load scripts and prompts from"
+        type: string
+        default: "v1"
+      monthly_budget_usd:
+        description: "Soft budget the guard paces against (keep below the Console hard cap)"
+        type: number
+        default: 180
+      budget_gist_id:
+        description: "Gist holding ledger.json (shared by all repos)"
+        type: string
+        default: "REPLACE_WITH_GIST_ID"
+      single_model:
+        type: string
+        default: "claude-sonnet-5-5"
+      council_model:
+        description: "Model for the council; reviewers with model: inherit use it too"
+        type: string
+        default: "claude-sonnet-5-5"
+      large_pr_lines:
+        description: "Changed lines (excluding lockfiles) that count as a large PR"
+        type: number
+        default: 300
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: true
+      REVIEW_BOT_LEDGER_TOKEN:
+        description: "Fine-grained token that can read and write the ledger gist"
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  id-token: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tier: ${{ steps.plan.outputs.tier }}
+      pr: ${{ steps.plan.outputs.pr }}
+      reason: ${{ steps.plan.outputs.reason }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: JackScammell/review-bot
+          ref: ${{ inputs.bot_ref }}
+          path: .review-bot
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LEDGER_TOKEN: ${{ secrets.REVIEW_BOT_LEDGER_TOKEN }}
+          GIST_ID: ${{ inputs.budget_gist_id }}
+          BUDGET: ${{ inputs.monthly_budget_usd }}
+          LARGE_PR_LINES: ${{ inputs.large_pr_lines }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_PATH: ${{ github.event_path }}
+        run: bash .review-bot/scripts/plan.sh
+
+  skipped:
+    needs: plan
+    if: needs.plan.outputs.tier == 'budget-hold'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "${{ needs.plan.outputs.pr }}" --repo "${{ github.repository }}" \
+            --body "Review bot: this month's review budget is nearly used, so no review this time. ${{ needs.plan.outputs.reason }}"
+
+  review:
+    needs: plan
+    if: needs.plan.outputs.tier == 'single' || needs.plan.outputs.tier == 'council'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ needs.plan.outputs.tier == 'council' && 40 || 15 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ needs.plan.outputs.pr }}/head
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: JackScammell/review-bot
+          ref: ${{ inputs.bot_ref }}
+          path: .review-bot
+      - id: prompt
+        env:
+          TIER: ${{ needs.plan.outputs.tier }}
+          PR: ${{ needs.plan.outputs.pr }}
+          REPO: ${{ github.repository }}
+        run: bash .review-bot/scripts/build-prompt.sh
+
+      - id: single
+        if: needs.plan.outputs.tier == 'single'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: ${{ steps.prompt.outputs.prompt }}
+          claude_args: |
+            --model ${{ inputs.single_model }}
+            --max-turns 25
+            --allowedTools "Read,Glob,Grep,mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(git diff:*),Bash(git log:*)"
+
+      - id: council
+        if: needs.plan.outputs.tier == 'council'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          plugin_marketplaces: "https://github.com/JackScammell/Parliament-Of-Chaos.git"
+          plugins: "chaos@chaos"
+          prompt: ${{ steps.prompt.outputs.prompt }}
+          claude_args: |
+            --model ${{ inputs.council_model }}
+            --max-turns 80
+            --allowedTools "Task,Read,Glob,Grep,mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh pr review:*),Bash(gh api user:*),Bash(git diff:*),Bash(git log:*),Bash(git merge-base:*),Bash(git fetch:*)"
+
+      - name: Record cost in the shared ledger
+        if: always()
+        env:
+          LEDGER_TOKEN: ${{ secrets.REVIEW_BOT_LEDGER_TOKEN }}
+          GIST_ID: ${{ inputs.budget_gist_id }}
+          TIER: ${{ needs.plan.outputs.tier }}
+          PR: ${{ needs.plan.outputs.pr }}
+          REPO: ${{ github.repository }}
+          EXECUTION_FILE: ${{ steps.single.outputs.execution_file || steps.council.outputs.execution_file }}
+        run: bash .review-bot/scripts/record-cost.sh
