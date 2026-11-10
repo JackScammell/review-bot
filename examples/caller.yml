@@ -1,6 +1,6 @@
 # Copy to .github/workflows/review-bot.yml in each repo.
-# Triggers: PR opened or marked ready (not drafts, not every push),
-# and /review or /council comments from people with write access.
+# Triggers: PR opened, reopened or marked ready (not drafts, not every push), and
+# /review or /council comments from owners, organisation members and collaborators.
 name: Review bot
 
 on:

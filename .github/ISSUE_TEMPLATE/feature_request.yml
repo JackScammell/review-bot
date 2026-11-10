@@ -1,0 +1,37 @@
+name: Feature request
+description: A change to how the bot decides, reviews, or reports.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The situation, not the solution. What does the bot do today, and where does it fall short?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: What you would like the bot to do instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - When a review runs, or which tier
+        - Budget and cost
+        - Review prompts or output
+        - Council member choice
+        - Setup and workflows
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: cost
+    attributes:
+      label: Effect on cost
+      description: Would this make reviews more or less expensive? A rough guess is fine.

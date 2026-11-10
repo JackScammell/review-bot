@@ -206,7 +206,9 @@ def choose_panel(ctx: dict) -> list[str]:
     lines = sum(f["additions"] + f["deletions"] for f in ctx["meta"]["files"]
                 if not SKIP_FILE_RE.search(f["path"]))
     added = "\n".join(l for l in ctx["diff"].splitlines() if l.startswith("+"))
-    docs_only = paths and all(p.lower().endswith((".md", ".txt", ".rst")) for p in paths)
+    docs_only = paths and all(p.lower().endswith((".md", ".txt", ".rst"))
+                              and not re.search(r"(^|/)requirements([^/]*\.txt$|/)", p, re.I)
+                              for p in paths)
 
     panel = ["grumpy-security-nag", "grumpy-code-reviewer"]
     if re.search(r"(?i)\b(email|date of birth|dob|national insurance|ni number|postcode|phone|"
