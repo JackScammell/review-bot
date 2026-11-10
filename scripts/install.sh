@@ -3,7 +3,7 @@
 # Adding the caller workflow file is left to each repo's normal PR process.
 #   ANTHROPIC_API_KEY=... REVIEW_BOT_LEDGER_TOKEN=... scripts/install.sh owner/repo [owner/repo ...]
 # For an organisation, prefer one org-level secret instead:
-#   gh secret set ANTHROPIC_API_KEY --org ACT-Training --repos "repo1,repo2"
+#   gh secret set ANTHROPIC_API_KEY --org my-org --repos "repo1,repo2"
 set -euo pipefail
 : "${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY}" "${REVIEW_BOT_LEDGER_TOKEN:?set REVIEW_BOT_LEDGER_TOKEN}"
 

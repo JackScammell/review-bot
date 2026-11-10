@@ -22,7 +22,7 @@ case "$EVENT_NAME" in
     PR=$(ev '.issue.number')
     case "$(ev '.comment.author_association')" in
       OWNER|MEMBER|COLLABORATOR) ;;
-      *) finish none "Commenter has no write access." ;;
+      *) finish none "Commenter is not an owner, organisation member or collaborator." ;;
     esac
     BODY=$(ev '.comment.body' | head -n1 | tr -d '\r')
     case "$BODY" in

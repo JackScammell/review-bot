@@ -1,8 +1,8 @@
 # PR review bot (JackScammell/review-bot), self-contained version.
 # Use this instead of caller.yml in repos whose CI must see every job's runner
-# (Vision's real-SQL sandbox gate refuses external reusable workflows).
+# (for example, a CI gate that refuses jobs from external reusable workflows).
 # Every job runs on a GitHub-hosted runner; the bot's scripts are checked out at BOT_REF.
-# Reviews a PR when it is opened or marked ready. Comment /review (single review)
+# Reviews a PR when it is opened, reopened or marked ready. Comment /review (single review)
 # or /council (council review) on a PR to review it again.
 name: Review bot
 
@@ -27,7 +27,6 @@ env:
   COUNCIL_MODEL: claude-sonnet-5-5
   COUNCIL_REF: main
   LARGE_PR_LINES: "300"
-  BUDGET: "180"
 
 jobs:
   plan:
@@ -49,6 +48,7 @@ jobs:
           repository: JackScammell/review-bot
           ref: ${{ env.BOT_REF }}
           path: .review-bot
+          persist-credentials: false
       - id: plan
         env:
           GH_TOKEN: ${{ github.token }}
@@ -81,17 +81,20 @@ jobs:
         with:
           ref: refs/pull/${{ needs.plan.outputs.pr }}/head
           fetch-depth: 0
+          persist-credentials: false   # no token left in the workspace
       - uses: actions/checkout@v4
         with:
           repository: JackScammell/review-bot
           ref: ${{ env.BOT_REF }}
           path: .review-bot
+          persist-credentials: false
       - if: needs.plan.outputs.tier == 'council'
         uses: actions/checkout@v4
         with:
           repository: JackScammell/Parliament-Of-Chaos
           ref: ${{ env.COUNCIL_REF }}
           path: .council
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

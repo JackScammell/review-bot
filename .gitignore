@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local secrets and env files
+.env
+.env.*
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Local planning notes (Parliament of Chaos council output)
+.project-files/
+
+# Checkouts the workflow makes beside the PR when run locally
+.review-bot/
+.council/

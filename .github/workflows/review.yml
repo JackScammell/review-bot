@@ -58,6 +58,7 @@ jobs:
           repository: JackScammell/review-bot
           ref: ${{ inputs.bot_ref }}
           path: .review-bot
+          persist-credentials: false
       - id: plan
         env:
           GH_TOKEN: ${{ github.token }}
@@ -92,17 +93,20 @@ jobs:
         with:
           ref: refs/pull/${{ needs.plan.outputs.pr }}/head
           fetch-depth: 0
+          persist-credentials: false   # no token left in the workspace
       - uses: actions/checkout@v4
         with:
           repository: JackScammell/review-bot
           ref: ${{ inputs.bot_ref }}
           path: .review-bot
+          persist-credentials: false
       - if: needs.plan.outputs.tier == 'council'
         uses: actions/checkout@v4
         with:
           repository: JackScammell/Parliament-Of-Chaos
           ref: ${{ inputs.council_ref }}
           path: .council
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

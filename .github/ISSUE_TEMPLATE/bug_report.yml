@@ -1,0 +1,58 @@
+name: Bug report
+description: The bot did something it should not, or did not review when it should have.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Remove anything private before posting: API keys, tokens, gist IDs, and code or
+        review text from private repositories.
+  - type: input
+    id: ref
+    attributes:
+      label: Bot version
+      description: The ref your caller uses (for example `v1`, or a commit SHA).
+      placeholder: "v1"
+    validations:
+      required: true
+  - type: dropdown
+    id: setup
+    attributes:
+      label: Workflow file
+      options:
+        - examples/caller.yml (reusable workflow)
+        - examples/standalone.yml (self-contained)
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: tier
+    attributes:
+      label: Review tier
+      options:
+        - Single review
+        - Council review
+        - No review ran
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What triggered the run (PR opened, `/review`, `/council`), what you expected, and what you got.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Workflow log
+      description: The relevant lines from the Actions run, especially the `plan` job's tier and reason. Paste them in a code block.
+      render: text
+  - type: checkboxes
+    id: ledger
+    attributes:
+      label: Budget ledger
+      description: Tick this if your caller passes `budget_gist_id`, whether or not the problem is with the ledger.
+      options:
+        - label: A spend ledger gist is set up (`budget_gist_id`)
