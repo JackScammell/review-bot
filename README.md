@@ -6,11 +6,11 @@ Claude PR reviews across several repos from one shared monthly budget.
 
 | Tier | When | Model |
 |---|---|---|
-| Single review | Small, low-risk PRs; `/review` comment; `review-bot:review` label | Sonnet 5.5 |
-| Council (`/chaos:parliament-review`, tiered panel) | Over 300 changed lines, risky paths (SQL, migrations, auth, workflows, config); `/council`; `review-bot:council` label | Sonnet 5.5 (reviewers inherit) |
-| None | Drafts, `review-bot:skip`, comments from people without write access | n/a |
+| Single review | Small, low-risk PRs; a `/review` comment | Sonnet 5.5 |
+| Council (`/chaos:parliament-review`, tiered panel) | Over 300 changed lines, risky paths (SQL, migrations, auth, workflows, config); a `/council` comment | Sonnet 5.5 (reviewers inherit) |
+| None | Drafts, comments from people without write access | n/a |
 
-It runs when a PR is opened or marked ready, not on every push. After a round of fixes, comment `/review` or `/council` to re-run.
+It runs when a PR is opened or marked ready, not on every push. To review again after a round of fixes, comment `/review` or `/council` on the PR (the command must start the comment).
 
 ### Budget ladder (shared across every repo)
 

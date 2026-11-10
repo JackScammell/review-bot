@@ -1,11 +1,11 @@
 # Copy to .github/workflows/review-bot.yml in each repo.
 # Triggers: PR opened or marked ready (not drafts, not every push),
-# labels review-bot:review / review-bot:council, and /review or /council comments.
+# and /review or /council comments from people with write access.
 name: Review bot
 
 on:
   pull_request:
-    types: [opened, ready_for_review, reopened, labeled]
+    types: [opened, ready_for_review, reopened]
   issue_comment:
     types: [created]
 
@@ -23,8 +23,7 @@ jobs:
   review:
     # Cheap pre-filter so ordinary comments don't start a runner.
     if: >-
-      (github.event_name == 'pull_request' &&
-       (github.event.action != 'labeled' || startsWith(github.event.label.name, 'review-bot:'))) ||
+      github.event_name == 'pull_request' ||
       (github.event.issue.pull_request &&
        (startsWith(github.event.comment.body, '/review') || startsWith(github.event.comment.body, '/council')))
     uses: JackScammell/review-bot/.github/workflows/review.yml@v1

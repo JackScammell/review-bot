@@ -15,15 +15,7 @@ REQUESTED=""   # single | council when a person asked for it
 case "$EVENT_NAME" in
   pull_request|pull_request_target)
     PR=$(ev '.pull_request.number')
-    ACTION=$(ev '.action')
     [ "$(ev '.pull_request.draft')" = "true" ] && finish none "Draft PR."
-    if [ "$ACTION" = "labeled" ]; then
-      case "$(ev '.label.name')" in
-        review-bot:council) REQUESTED=council ;;
-        review-bot:review)  REQUESTED=single ;;
-        *) finish none "Label is not a review-bot label." ;;
-      esac
-    fi
     ;;
   issue_comment)
     [ "$(ev '.issue.pull_request // empty')" = "" ] && finish none "Comment is not on a PR."
@@ -41,9 +33,6 @@ case "$EVENT_NAME" in
     ;;
   *) finish none "Unsupported event $EVENT_NAME." ;;
 esac
-
-LABELS=$(gh pr view "$PR" --repo "$REPO" --json labels --jq '[.labels[].name] | join(",")')
-case ",$LABELS," in *,review-bot:skip,*) finish none "PR has review-bot:skip." ;; esac
 
 # --- Size and risk (lockfiles and generated files excluded) -------------------
 FILES=$(gh pr view "$PR" --repo "$REPO" --json files --jq '.files')
