@@ -1,0 +1,106 @@
+# PR review bot (JackScammell/review-bot), self-contained version.
+# Use this instead of caller.yml in repos whose CI must see every job's runner
+# (Vision's real-SQL sandbox gate refuses external reusable workflows).
+# Every job runs on a GitHub-hosted runner; the bot's scripts are checked out at BOT_REF.
+# Reviews a PR when it is opened or marked ready. Comment /review (single review)
+# or /council (council review) on a PR to review it again.
+name: Review bot
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write   # only for the "budget nearly used" comment
+
+concurrency:
+  group: review-bot-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: false
+
+env:
+  BOT_REF: v1
+  SINGLE_MODEL: claude-sonnet-5-5
+  COUNCIL_MODEL: claude-sonnet-5-5
+  COUNCIL_REF: main
+  LARGE_PR_LINES: "300"
+  BUDGET: "180"
+
+jobs:
+  plan:
+    # Cheap pre-filter so ordinary comments don't start a run; the plan step checks again.
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event.issue.pull_request &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+       (startsWith(github.event.comment.body, '/review') || startsWith(github.event.comment.body, '/council')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tier: ${{ steps.plan.outputs.tier }}
+      pr: ${{ steps.plan.outputs.pr }}
+      reason: ${{ steps.plan.outputs.reason }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: JackScammell/review-bot
+          ref: ${{ env.BOT_REF }}
+          path: .review-bot
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_PATH: ${{ github.event_path }}
+        run: bash .review-bot/scripts/plan.sh
+
+  skipped:
+    needs: plan
+    if: needs.plan.outputs.tier == 'budget-hold'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ needs.plan.outputs.pr }}
+          REASON: ${{ needs.plan.outputs.reason }}
+        run: |
+          gh pr comment "$PR" --repo "${{ github.repository }}" \
+            --body "Review bot: this month's review budget is nearly used, so no review this time. $REASON"
+
+  review:
+    needs: plan
+    if: needs.plan.outputs.tier == 'single' || needs.plan.outputs.tier == 'council'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ needs.plan.outputs.tier == 'council' && 20 || 10 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ needs.plan.outputs.pr }}/head
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: JackScammell/review-bot
+          ref: ${{ env.BOT_REF }}
+          path: .review-bot
+      - if: needs.plan.outputs.tier == 'council'
+        uses: actions/checkout@v4
+        with:
+          repository: JackScammell/Parliament-Of-Chaos
+          ref: ${{ env.COUNCIL_REF }}
+          path: .council
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet anthropic
+      - id: review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          TIER: ${{ needs.plan.outputs.tier }}
+          PR: ${{ needs.plan.outputs.pr }}
+          REPO: ${{ github.repository }}
+        run: python .review-bot/scripts/review_bot.py

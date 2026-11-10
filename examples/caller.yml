@@ -12,8 +12,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  issues: write
-  id-token: write
+  issues: write   # only for the "budget nearly used" comment
 
 concurrency:
   group: review-bot-${{ github.event.pull_request.number || github.event.issue.number }}
@@ -25,6 +24,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request' ||
       (github.event.issue.pull_request &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
        (startsWith(github.event.comment.body, '/review') || startsWith(github.event.comment.body, '/council')))
     uses: JackScammell/review-bot/.github/workflows/review.yml@v1
     # Named explicitly: 'secrets: inherit' does not pass secrets to a workflow owned by another account.
