@@ -38,7 +38,7 @@ gh secret set ANTHROPIC_API_KEY --repo JackScammell/pr-watcher   # prompts for t
 # or, for several repos with a ledger: ANTHROPIC_API_KEY=... REVIEW_BOT_LEDGER_TOKEN=... scripts/install.sh JackScammell/pr-watcher
 ```
 
-Then add `examples/caller.yml` to the repo as `.github/workflows/review-bot.yml`. Optional: add `.github/review-bot-rules.md` with rules specific to that repo, such as accepted risks the bot must never raise.
+Then add `examples/caller.yml` (it passes `ANTHROPIC_API_KEY` explicitly; `secrets: inherit` does not work across accounts) to the repo as `.github/workflows/review-bot.yml`. Optional: add `.github/review-bot-rules.md` with rules specific to that repo, such as accepted risks the bot must never raise.
 
 For ACT-Training, set the two secrets once at org level and choose the repos, instead of setting them per repo.
 

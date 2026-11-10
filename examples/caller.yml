@@ -27,4 +27,6 @@ jobs:
       (github.event.issue.pull_request &&
        (startsWith(github.event.comment.body, '/review') || startsWith(github.event.comment.body, '/council')))
     uses: JackScammell/review-bot/.github/workflows/review.yml@v1
-    secrets: inherit
+    # Named explicitly: 'secrets: inherit' does not pass secrets to a workflow owned by another account.
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
