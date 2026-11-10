@@ -14,9 +14,9 @@ on:
         type: number
         default: 180
       budget_gist_id:
-        description: "Gist holding ledger.json (shared by all repos)"
+        description: "Gist holding ledger.json (shared by all repos). Empty = no ledger; the Console spend limit is the only cap"
         type: string
-        default: "REPLACE_WITH_GIST_ID"
+        default: ""
       single_model:
         type: string
         default: "claude-sonnet-5-5"
@@ -32,8 +32,8 @@ on:
       ANTHROPIC_API_KEY:
         required: true
       REVIEW_BOT_LEDGER_TOKEN:
-        description: "Fine-grained token that can read and write the ledger gist"
-        required: true
+        description: "Fine-grained token that can read and write the ledger gist (only with budget_gist_id)"
+        required: false
 
 permissions:
   contents: read

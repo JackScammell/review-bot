@@ -52,6 +52,10 @@ else
 fi
 
 # --- Budget ladder ------------------------------------------------------------
+if [ -z "${GIST_ID:-}" ] || [ -z "${LEDGER_TOKEN:-}" ]; then
+  # No ledger configured: normal tiers; the Console spend limit is the only stop.
+  finish "$WANT" "$WHY; no spend ledger set up, so the Console limit is the only cap."
+fi
 if ! LEDGER=$(ledger_read); then
   # Ledger unreadable: allow only the cheap tier. The Console cap is the backstop.
   finish single "Ledger unreadable, so single review only; $WHY."

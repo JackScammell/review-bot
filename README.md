@@ -12,9 +12,9 @@ Claude PR reviews across several repos from one shared monthly budget.
 
 It runs when a PR is opened or marked ready, not on every push. To review again after a round of fixes, comment `/review` or `/council` on the PR (the command must start the comment).
 
-### Budget ladder (shared across every repo)
+### Budget ladder (optional, shared across every repo)
 
-Each run's cost is added to `ledger.json` in one gist. Before each run:
+Without a ledger the bot uses the tiers above and the Console spend limit is the only stop. With one, each run's cost is added to `ledger.json` in one gist. Before each run:
 
 - **Under 60% of the budget used, and on pace:** tiers as above.
 - **60–85%, or spending ahead of pace for the month:** councils run only when asked for.
@@ -26,15 +26,16 @@ The hard stop is the **Console spend limit** on the bot's workspace. Set it a li
 ## One-time setup
 
 1. **Anthropic Console:** create a `review-bot` workspace, set its monthly spend limit, and create an API key in it.
-2. **Ledger gist:** create a secret gist with a file `ledger.json` containing `{}`. Put its ID in `budget_gist_id` in `.github/workflows/review.yml`.
-3. **Ledger token:** a fine-grained personal access token with only *Gists: read and write*.
+2. **Ledger gist (optional):** create a secret gist with a file `ledger.json` containing `{}`. Put its ID in `budget_gist_id` in `.github/workflows/review.yml`.
+3. **Ledger token (only with a gist):** a fine-grained personal access token with only *Gists: read and write*.
 4. **Claude GitHub App:** install it on your account and on the ACT-Training org (an org admin has to approve), for the repos that will use the bot.
 5. **Publish this repo** (public, so ACT-Training repos can call it), then tag it: `git tag v1 && git push origin v1`.
 
 ## Adding a repo
 
 ```bash
-ANTHROPIC_API_KEY=... REVIEW_BOT_LEDGER_TOKEN=... scripts/install.sh JackScammell/pr-watcher
+gh secret set ANTHROPIC_API_KEY --repo JackScammell/pr-watcher   # prompts for the value
+# or, for several repos with a ledger: ANTHROPIC_API_KEY=... REVIEW_BOT_LEDGER_TOKEN=... scripts/install.sh JackScammell/pr-watcher
 ```
 
 Then add `examples/caller.yml` to the repo as `.github/workflows/review-bot.yml`. Optional: add `.github/review-bot-rules.md` with rules specific to that repo, such as accepted risks the bot must never raise.

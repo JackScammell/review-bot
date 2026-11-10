@@ -5,6 +5,11 @@
 set -euo pipefail
 source "$(dirname "$0")/ledger.sh"
 
+if [ -z "${GIST_ID:-}" ] || [ -z "${LEDGER_TOKEN:-}" ]; then
+  echo "No spend ledger set up; not recording cost."
+  exit 0
+fi
+
 
 COST=""
 if [ -n "${EXECUTION_FILE:-}" ] && [ -f "$EXECUTION_FILE" ]; then
