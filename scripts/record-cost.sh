@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Adds this run's cost to the shared ledger. Reads total_cost_usd from the
-# action's execution file; if it can't, records a fixed estimate per tier so
-# the budget is never under-counted.
+# Adds this run's cost (COST_USD, from the review step) to the shared ledger.
+# If it is missing, records a fixed estimate per tier so the budget is never under-counted.
 set -euo pipefail
 source "$(dirname "$0")/ledger.sh"
 
@@ -11,16 +10,12 @@ if [ -z "${GIST_ID:-}" ] || [ -z "${LEDGER_TOKEN:-}" ]; then
 fi
 
 
-COST=""
-if [ -n "${EXECUTION_FILE:-}" ] && [ -f "$EXECUTION_FILE" ]; then
-  # Works for a JSON array or JSON lines; takes the last result message.
-  COST=$(jq -s '[.. | objects | select(.type? == "result") | .total_cost_usd? | numbers] | last // empty' "$EXECUTION_FILE" 2>/dev/null || true)
-fi
+COST="${COST_USD:-}"
 ESTIMATED=false
 if [ -z "$COST" ]; then
   case "$TIER" in single) COST=0.50 ;; *) COST=5.00 ;; esac
   ESTIMATED=true
-  echo "::warning::No cost in the execution file; recording estimate \$$COST for a $TIER review."
+  echo "::warning::The review step reported no cost; recording an estimate of \$$COST for a $TIER review."
 fi
 
 # Read-modify-write with a short retry. Two runs finishing together can still

@@ -21,9 +21,13 @@ on:
         type: string
         default: "claude-sonnet-5-5"
       council_model:
-        description: "Model for the council; reviewers with model: inherit use it too"
+        description: "Model for every council member and the synthesis"
         type: string
         default: "claude-sonnet-5-5"
+      council_ref:
+        description: "Ref of JackScammell/Parliament-Of-Chaos whose reviewer prompts the council uses"
+        type: string
+        default: "main"
       large_pr_lines:
         description: "Changed lines (excluding lockfiles) that count as a large PR"
         type: number
@@ -39,7 +43,6 @@ permissions:
   contents: read
   pull-requests: write
   issues: write
-  id-token: write
 
 jobs:
   plan:
@@ -83,7 +86,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.tier == 'single' || needs.plan.outputs.tier == 'council'
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ needs.plan.outputs.tier == 'council' && 40 || 15 }}
+    timeout-minutes: ${{ needs.plan.outputs.tier == 'council' && 20 || 10 }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -94,40 +97,27 @@ jobs:
           repository: JackScammell/review-bot
           ref: ${{ inputs.bot_ref }}
           path: .review-bot
-      - id: prompt
+      - if: needs.plan.outputs.tier == 'council'
+        uses: actions/checkout@v4
+        with:
+          repository: JackScammell/Parliament-Of-Chaos
+          ref: ${{ inputs.council_ref }}
+          path: .council
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet anthropic
+
+      - id: review
         env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
           TIER: ${{ needs.plan.outputs.tier }}
           PR: ${{ needs.plan.outputs.pr }}
           REPO: ${{ github.repository }}
-        run: bash .review-bot/scripts/build-prompt.sh
-
-      - id: single
-        if: needs.plan.outputs.tier == 'single'
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # Debug: set repo variable REVIEW_BOT_DEBUG=true for one run. Full output can include file contents.
-          show_full_output: ${{ vars.REVIEW_BOT_DEBUG == 'true' }}
-          prompt: ${{ steps.prompt.outputs.prompt }}
-          claude_args: |
-            --model ${{ inputs.single_model }}
-            --max-turns 25
-            --allowedTools "Read,Glob,Grep,mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(git diff:*),Bash(git log:*)"
-
-      - id: council
-        if: needs.plan.outputs.tier == 'council'
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # Debug: set repo variable REVIEW_BOT_DEBUG=true for one run. Full output can include file contents.
-          show_full_output: ${{ vars.REVIEW_BOT_DEBUG == 'true' }}
-          plugin_marketplaces: "https://github.com/JackScammell/Parliament-Of-Chaos.git"
-          plugins: "chaos@chaos"
-          prompt: ${{ steps.prompt.outputs.prompt }}
-          claude_args: |
-            --model ${{ inputs.council_model }}
-            --max-turns 80
-            --allowedTools "Task,Read,Glob,Grep,mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh pr review:*),Bash(gh api user:*),Bash(git diff:*),Bash(git log:*),Bash(git merge-base:*),Bash(git fetch:*)"
+          SINGLE_MODEL: ${{ inputs.single_model }}
+          COUNCIL_MODEL: ${{ inputs.council_model }}
+        run: python .review-bot/scripts/review_bot.py
 
       - name: Record cost in the shared ledger
         if: always()
@@ -137,5 +127,5 @@ jobs:
           TIER: ${{ needs.plan.outputs.tier }}
           PR: ${{ needs.plan.outputs.pr }}
           REPO: ${{ github.repository }}
-          EXECUTION_FILE: ${{ steps.single.outputs.execution_file || steps.council.outputs.execution_file }}
+          COST_USD: ${{ steps.review.outputs.cost_usd }}
         run: bash .review-bot/scripts/record-cost.sh
