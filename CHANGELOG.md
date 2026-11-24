@@ -32,6 +32,8 @@ new tag, `v2`, instead. `[Unreleased]` lists what is on `main` but not yet on `v
 
 ### Fixed
 
+- A PR whose diff is too large for GitHub to provide (over 300 files, for example a
+  release merge) is now skipped with a note on the PR. Before, the review job failed.
 - A ledger that is no longer a JSON object of months is now treated as unreadable (single reviews
   only) instead of as empty, and recording a run's cost fails at once with an error
   saying so. Before, recording a run's cost replaced it with a fresh ledger and lost

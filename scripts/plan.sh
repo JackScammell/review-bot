@@ -34,6 +34,17 @@ case "$EVENT_NAME" in
   *) finish none "Unsupported event $EVENT_NAME." ;;
 esac
 
+# --- Diff too large for GitHub ------------------------------------------------
+# GitHub gives no diff for a very large PR (over 300 files, for example a release
+# merge). Nothing can be reviewed, so skip with a note instead of failing the check.
+# Any other error is left for the review job to report.
+if ! DIFF_ERR=$(gh pr diff "$PR" --repo "$REPO" 2>&1 >/dev/null) && [[ "$DIFF_ERR" == *"PullRequest.diff too_large"* ]]; then
+  REASON="The diff is too large for GitHub to provide, so there is no review."
+  gh pr comment "$PR" --repo "$REPO" --body "Review bot: $REASON" \
+    || echo "::warning::Could not post the too-large note on the PR."
+  finish none "$REASON"
+fi
+
 # --- Size and risk (lockfiles and generated files excluded) -------------------
 FILES=$(gh pr view "$PR" --repo "$REPO" --json files --jq '.files')
 LOCK_RE='(^|/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|composer\.lock|packages\.lock\.json|Cargo\.lock|poetry\.lock|[^/]*\.min\.(js|css))$|(^|/)dist/'

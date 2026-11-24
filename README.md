@@ -67,7 +67,7 @@ flowchart LR
 |---|---|
 | **Single review** | Small, low-risk PRs, or when someone comments `/review` |
 | **Council review** | Large PRs, PRs touching risky paths (SQL, migrations, auth, workflows, secrets, config), or when someone comments `/council` |
-| **No review** | Drafts (unless someone asks with a comment), comments from anyone other than an owner, organisation member or collaborator, or a budget that is nearly used |
+| **No review** | Drafts (unless someone asks with a comment), comments from anyone other than an owner, organisation member or collaborator, a diff too large for GitHub to provide, or a budget that is nearly used |
 
 It reviews when a PR is opened, reopened or marked ready, not on every push. After a round of fixes, comment `/review` or `/council` to go again; the bot reads its own previous review and checks what changed since. The council's specialist reviewers are the grumpy reviewers from [Parliament of Chaos](https://github.com/JackScammell/Parliament-Of-Chaos).
 

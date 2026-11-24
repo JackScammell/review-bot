@@ -44,11 +44,13 @@ comments. `scripts/plan.sh` then decides, in this order:
    collaborator (an organisation member may not have write access to the repo) and the
    comment's first line starts with `/council` (council review) or `/review` (single
    review). Anything else is ignored.
-3. **Asked for** a tier with a comment: that tier.
-4. **Large:** more than `large_pr_lines` changed lines gets a council. Lockfiles,
+3. **A diff too large for GitHub to provide** (over 300 files, for example a release
+   merge) is never reviewed, even on request. The bot leaves a note on the PR.
+4. **Asked for** a tier with a comment: that tier.
+5. **Large:** more than `large_pr_lines` changed lines gets a council. Lockfiles,
    minified files and `dist/` are not counted.
-5. **Risky:** any changed path matching the pattern below gets a council.
-6. **Otherwise:** a single review.
+6. **Risky:** any changed path matching the pattern below gets a council.
+7. **Otherwise:** a single review.
 
 Risky path pattern (a case-insensitive regular expression; a path matches if any of
 the `|`-separated parts appears in it):

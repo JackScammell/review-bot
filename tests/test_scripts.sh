@@ -17,6 +17,11 @@ cat > "$WORK/bin/gh" <<'EOF'
 echo "gh $* [token=$GH_TOKEN]" >> "$FAKE_DIR/gh.calls"
 case "$1 $2" in
   "pr view")  cat "$FAKE_DIR/files.json" ;;
+  "pr diff")
+    echo "diff --git a/x b/x"
+    [ -n "${FAKE_DIFF_ERR:-}" ] && { echo "$FAKE_DIFF_ERR" >&2; exit 1; }
+    true ;;
+  "pr comment") [ "${FAKE_COMMENT_FAIL:-0}" = 1 ] && exit 1; true ;;
   "api gists/"*)
     [ "${FAKE_LEDGER_FAIL:-0}" = 1 ] && exit 1
     cat "$FAKE_DIR/ledger.json" ;;
@@ -95,6 +100,29 @@ check "pr view asks for the files of PR 7" yes \
   "$(grep -qxF 'gh pr view 7 --repo example/repo --json files --jq .files [token=]' "$WORK/gh.calls" && echo yes || echo no)"
 comment_event "looks good";            check "not a command"           none    "$(tier)"
 EVENT=push; check "unsupported event" none "$(tier)"
+
+# --- plan.sh: diff too large for GitHub ------------------------------------------
+TOO_LARGE='could not find pull request diff: HTTP 406: Sorry, the diff exceeded the maximum number of files (300).
+PullRequest.diff too_large'
+NOTE='gh pr comment 7 --repo example/repo --body Review bot: The diff is too large for GitHub to provide, so there is no review. [token=]'
+noted() { grep -cxF "$NOTE" "$WORK/gh.calls"; }
+export FAKE_DIFF_ERR="$TOO_LARGE"
+files "$LARGE"; pr_event; : > "$WORK/gh.calls"
+check "too large: skipped"                none "$(tier)"
+check "too large: one note on the PR"     1    "$(noted)"
+check "too large: pr and reason are set"  2    "$(grep -cE '^(pr=7|reason=The diff is too large)' "$WORK/out")"
+comment_event "/council"; : > "$WORK/gh.calls"
+check "too large: /council is skipped too" none "$(tier)"
+check "too large: /council gets the note"  1    "$(noted)"
+pr_event true; : > "$WORK/gh.calls"
+check "too large: draft makes no call"    "none 0" "$(tier) $(wc -l < "$WORK/gh.calls" | tr -d ' ')"
+pr_event; FAKE_COMMENT_FAIL=1; export FAKE_COMMENT_FAIL
+check "too large: skipped when the note fails" none "$(tier)"
+unset FAKE_COMMENT_FAIL
+export FAKE_DIFF_ERR="HTTP 502: Bad Gateway"; : > "$WORK/gh.calls"
+check "another diff error is not a skip"  council "$(tier)"
+check "another diff error posts no note"  0       "$(noted)"
+unset FAKE_DIFF_ERR
 
 # --- plan.sh: budget ladder (late in the month, so pace ~= share spent) --------
 export GIST_ID=gist123 LEDGER_TOKEN=token
